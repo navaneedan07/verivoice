@@ -1,47 +1,36 @@
 -- VeriVoice Production Database Schema Initialization
--- Execute this script on Render PostgreSQL after database creation
+-- Keep this aligned with the entity model used by the application.
 
--- Drop existing tables (if any) - use with caution
--- DROP TABLE IF EXISTS document CASCADE;
--- DROP TABLE IF EXISTS vendor CASCADE;
--- DROP TABLE IF EXISTS gst_cache CASCADE;
--- DROP TABLE IF EXISTS vendor_history CASCADE;
-
--- Create tables
 CREATE TABLE IF NOT EXISTS gst_cache (
-    id VARCHAR(15) PRIMARY KEY,
-    legal_name VARCHAR(255) NOT NULL,
+    gstin VARCHAR(15) PRIMARY KEY,
+    legal_name VARCHAR(255),
     status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_verified TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS vendor (
-    id VARCHAR(15) PRIMARY KEY,
-    vendor_name VARCHAR(255) NOT NULL,
-    vendor_short_name VARCHAR(100),
+CREATE TABLE IF NOT EXISTS vendors (
+    gstin VARCHAR(15) PRIMARY KEY,
+    legal_name VARCHAR(255),
+    trade_name VARCHAR(255),
     state VARCHAR(100),
-    vendor_status VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    status VARCHAR(50),
+    verified_at TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS document (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS invoices (
+    id UUID PRIMARY KEY,
     file_name VARCHAR(255),
-    content_type VARCHAR(50),
+    file_path VARCHAR(500),
+    content_type VARCHAR(100),
+    file_hash VARCHAR(64),
     source_file BYTEA,
-    extracted_text TEXT,
-    raw_llm_response TEXT,
-    file_hash VARCHAR(255),
+    upload_date TIMESTAMP,
     status VARCHAR(50),
-    verification_score DOUBLE PRECISION,
-    verification_status VARCHAR(50),
+    raw_llm_response TEXT,
+    extracted_text TEXT,
     risk_score DOUBLE PRECISION,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    -- ExtractedData fields
+    verification_score INTEGER,
+    verification_status VARCHAR(50),
     vendor_name VARCHAR(255),
     gst_number VARCHAR(15),
     invoice_number VARCHAR(100),
@@ -58,54 +47,37 @@ CREATE TABLE IF NOT EXISTS document (
     irn VARCHAR(255),
     qr_code TEXT,
     confidence_score DOUBLE PRECISION,
-    
-    FOREIGN KEY (gst_number) REFERENCES gst_cache(id) ON DELETE SET NULL
+    recipient_gstin VARCHAR(15)
 );
 
-CREATE TABLE IF NOT EXISTS verification_check (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID NOT NULL,
-    layer VARCHAR(100),
-    code VARCHAR(100),
-    name VARCHAR(255),
-    status VARCHAR(50),
+CREATE TABLE IF NOT EXISTS invoice_anomalies (
+    invoice_id UUID NOT NULL,
+    anomalies VARCHAR(1000)
+);
+
+CREATE TABLE IF NOT EXISTS invoice_verification_checks (
+    invoice_id UUID NOT NULL,
+    code VARCHAR(255),
     detail TEXT,
+    layer VARCHAR(255),
+    name VARCHAR(255),
     points DOUBLE PRECISION,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (document_id) REFERENCES document(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS document_anomaly (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    document_id UUID NOT NULL,
-    anomaly_text TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (document_id) REFERENCES document(id) ON DELETE CASCADE
+    status VARCHAR(255),
+    created_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS vendor_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     gst_number VARCHAR(15),
     vendor_name VARCHAR(255),
-    total_documents INT,
-    verified_documents INT,
+    total_documents INTEGER,
+    verified_documents INTEGER,
     average_score DOUBLE PRECISION,
     last_verification TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (gst_number) REFERENCES gst_cache(id) ON DELETE CASCADE
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_document_gst_number ON document(gst_number);
-CREATE INDEX IF NOT EXISTS idx_document_invoice_number ON document(invoice_number);
-CREATE INDEX IF NOT EXISTS idx_document_created_at ON document(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_verification_check_document_id ON verification_check(document_id);
-CREATE INDEX IF NOT EXISTS idx_vendor_history_gst_number ON vendor_history(gst_number);
-
--- Grant permissions (adjust username as needed)
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO verivoice;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO verivoice;
+CREATE INDEX IF NOT EXISTS idx_invoices_gst_number ON invoices (gst_number);
+CREATE INDEX IF NOT EXISTS idx_invoices_invoice_number ON invoices (invoice_number);
+CREATE INDEX IF NOT EXISTS idx_vendor_history_gst_number ON vendor_history (gst_number);
