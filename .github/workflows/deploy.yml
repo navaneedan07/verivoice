@@ -74,9 +74,11 @@ jobs:
         run: npm install --global vercel
 
       - name: Deploy to Vercel
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: |
           cd frontend
-          vercel --prod --token="${{ secrets.VERCEL_TOKEN }}" --yes
+          vercel --prod --token="${{ secrets.VERCEL_TOKEN }}" --build-env VITE_API_URL="${{ secrets.VITE_API_URL }}" --yes
 
 
   deploy-backend:
