@@ -56,7 +56,6 @@ public class Document {
     private Integer verificationScore;
     @Enumerated(EnumType.STRING)
     private VerificationClassification verificationStatus;
-    private Boolean fraudDetected;
     public enum DocumentStatus {
         PENDING, PROCESSING, NEEDS_REVIEW, FLAGGED, APPROVED, REJECTED
     }

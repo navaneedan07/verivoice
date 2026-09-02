@@ -9,10 +9,12 @@ import com.verivoice.server.inspection.DocumentInspection;
 import com.verivoice.server.mapper.DocumentMapper;
 import com.verivoice.server.repository.DocumentRepository;
 import com.verivoice.server.service.DocumentService;
-import com.verivoice.server.verification.CheckStatus;
 import com.verivoice.server.verification.VerificationOutcome;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Locale;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -21,7 +23,6 @@ public class DocumentServiceImpl implements DocumentService {
     private final ValidationService validationService;
     private final DocumentExtractionService extractionService;
     private final DocumentInspectionService inspectionService;
-    private final GstRegistrySyncService gstRegistrySyncService;
     private final VendorHistoryService vendorHistoryService;
 
     public DocumentServiceImpl(
@@ -30,7 +31,6 @@ public class DocumentServiceImpl implements DocumentService {
             ValidationService validationService,
             DocumentExtractionService extractionService,
             DocumentInspectionService inspectionService,
-            GstRegistrySyncService gstRegistrySyncService,
             VendorHistoryService vendorHistoryService
     ) {
         this.docRepo = docRepo;
@@ -38,10 +38,10 @@ public class DocumentServiceImpl implements DocumentService {
         this.validationService = validationService;
         this.extractionService = extractionService;
         this.inspectionService = inspectionService;
-        this.gstRegistrySyncService = gstRegistrySyncService;
         this.vendorHistoryService = vendorHistoryService;
     }
     @Override
+    @Transactional
     public DocumentDto processDocument(MultipartFile file) throws Exception {
         Document doc = new Document();
         doc.setFileName(file.getOriginalFilename());
@@ -50,17 +50,23 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setStatus(
                 Document.DocumentStatus.PROCESSING
         );
-        String content = extractionService.extractContent(file);
-        ExtractedData data = groqService.analyzeInvoice(content, file.getContentType());
-        DocumentInspection inspection = inspectionService.inspect(file, data);
+        DocumentExtractionService.AnalysisInput analysisInput = extractionService.extractForAnalysis(file);
+        String content = analysisInput.extractedText();
+        GroqService.AnalysisResult analysis = groqService.analyzeInvoice(
+                content,
+                file.getContentType(),
+                analysisInput.imageDataUrls()
+        );
+        ExtractedData data = analysis.data();
+        DocumentInspection inspection = inspectionService.inspect(file);
         doc.setFileHash(inspection.sha256());
         if (data.getGstNumber() != null) {
-            data.setGstNumber(data.getGstNumber().trim().toUpperCase());
-            gstRegistrySyncService.refreshIfConfigured(data.getGstNumber());
+            data.setGstNumber(data.getGstNumber().trim().toUpperCase(Locale.ROOT));
         }
         if (inspection.qrPayload() != null) {
             data.setQrCode(inspection.qrPayload());
         }
+        doc.setRawLlmResponse(analysis.rawResponse());
         doc.setExtractedData(data);
         doc.setExtractedText(content);
         VerificationOutcome outcome = validationService.validate(data, inspection);
@@ -69,10 +75,6 @@ public class DocumentServiceImpl implements DocumentService {
         doc.setVerificationScore(outcome.score());
         doc.setVerificationStatus(outcome.classification());
         doc.setRiskScore(100d - outcome.score());
-        doc.setFraudDetected(outcome.checks().stream()
-                .anyMatch(check -> "FRAUD_ANALYSIS".equals(check.getLayer())
-                        && !"MANDATORY_FIELDS".equals(check.getCode())
-                        && check.getStatus() == CheckStatus.FAILED));
         doc.setStatus(mapDocumentStatus(outcome));
         Document savedDoc = docRepo.save(doc);
         vendorHistoryService.record(data, outcome);
@@ -80,12 +82,14 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public DocumentDto getDocumentById(String docId) {
         Document doc = docRepo.findById(docId).orElseThrow(()-> new DocumentNotFoundException("Document doesn't exist"));
         return DocumentMapper.mapToDocumentDto(doc);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public StoredDocumentFile getDocumentFile(String docId) {
         Document doc = docRepo.findById(docId)
                 .orElseThrow(() -> new DocumentNotFoundException("Document doesn't exist"));

@@ -292,18 +292,6 @@ Stores:
 - Zoho Books
 - QuickBooks
 
-## Three-Way Matching
-
-Validate:
-
-```text
-Purchase Order
-      ↓
-Goods Receipt Note
-      ↓
-Invoice
-```
-
 ## Advanced Fraud Analytics
 
 - Vendor Reputation Scoring

@@ -1,0 +1,40 @@
+# Environment files (local development only)
+.env
+.env.local
+.env.*.local
+.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*.swn
+*.log
+
+# Dependencies
+node_modules
+target
+/dist
+
+# Build artifacts
+*.jar
+*.jar.original
+
+# Database
+*.db
+*.h2.db
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage
+.nyc_output
+
+# Render
+render.yaml.local
+
+# Vercel
+.vercel

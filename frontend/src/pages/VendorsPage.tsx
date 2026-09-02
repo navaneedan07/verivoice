@@ -1,49 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { erpService } from '../services/api';
-import { Vendor } from '../types';
+import { useState, useEffect } from 'react';
+import type { Vendor } from '../types';
 import { Database, Search, MapPin, CheckCircle } from 'lucide-react';
+import { useMemo } from 'react';
+import api, { getApiErrorMessage } from '../services/api';
 
 export default function VendorsPage() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Mock data - in real app, fetch from API
-    setVendors([
-      {
-        gstin: '33AAACW4514C1ZW',
-        legalName: 'WONDERLA HOLIDAYS LIMITED',
-        tradeName: 'Wonderla',
-        state: 'Tamil Nadu',
-        status: 'Active',
-        verifiedAt: new Date().toISOString(),
-      },
-      {
-        gstin: '18AABCS1234C1Z9',
-        legalName: 'TECH SOLUTIONS PVT LTD',
-        tradeName: 'TechSol',
-        state: 'Karnataka',
-        status: 'Active',
-        verifiedAt: new Date().toISOString(),
-      },
-      {
-        gstin: '27BFGPK7654C1Z5',
-        legalName: 'GLOBAL ENTERPRISES',
-        tradeName: 'GlobalEnt',
-        state: 'Maharashtra',
-        status: 'Active',
-        verifiedAt: new Date().toISOString(),
-      },
-    ]);
-    setLoading(false);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await api.get('/vendors');
+        if (!cancelled) setVendors(res.data);
+      } catch (error: unknown) {
+        if (!cancelled) setError(getApiErrorMessage(error, 'Failed to load vendors'));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const filteredVendors = vendors.filter(
-    (vendor) =>
-      vendor.legalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vendor.gstin.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredVendors = useMemo(
+    () =>
+      vendors.filter(
+        (vendor) =>
+          (vendor.legalName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          vendor.gstin.toLowerCase().includes(searchTerm.toLowerCase())
+      ),
+    [vendors, searchTerm]
   );
+
 
   return (
     <div>
@@ -67,9 +64,17 @@ export default function VendorsPage() {
           </div>
         </div>
 
+        {/* Error State */}
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
         {/* Vendors List */}
         {loading ? (
           <div className="text-center py-12">
+            <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4" />
             <p className="text-gray-600">Loading vendors...</p>
           </div>
         ) : filteredVendors.length === 0 ? (
@@ -94,15 +99,15 @@ export default function VendorsPage() {
                   <tr key={vendor.gstin} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4">
                       <div>
-                        <p className="font-medium text-gray-900">{vendor.legalName}</p>
-                        <p className="text-sm text-gray-600">{vendor.tradeName}</p>
+                        <p className="font-medium text-gray-900">{vendor.legalName || 'Name unavailable'}</p>
+                        <p className="text-sm text-gray-600">{vendor.tradeName || '-'}</p>
                       </div>
                     </td>
                     <td className="py-4 px-4 font-mono text-sm text-gray-900">{vendor.gstin}</td>
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-1 text-gray-600">
                         <MapPin size={16} />
-                        {vendor.state}
+                        {vendor.state || 'Unknown'}
                       </div>
                     </td>
                     <td className="py-4 px-4">

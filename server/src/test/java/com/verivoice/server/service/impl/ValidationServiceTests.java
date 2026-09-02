@@ -6,10 +6,7 @@ import com.verivoice.server.entity.Vendor;
 import com.verivoice.server.entity.Document;
 import com.verivoice.server.inspection.DocumentInspection;
 import com.verivoice.server.repository.DocumentRepository;
-import com.verivoice.server.repository.GoodsReceiptRepository;
 import com.verivoice.server.repository.GstCacheRepository;
-import com.verivoice.server.repository.PaymentRecordRepository;
-import com.verivoice.server.repository.PurchaseOrderRepository;
 import com.verivoice.server.repository.VendorRepository;
 import com.verivoice.server.verification.CheckStatus;
 import com.verivoice.server.verification.VerificationClassification;
@@ -20,19 +17,17 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ValidationServiceTests {
     private DocumentRepository documentRepository;
     private GstCacheRepository gstCacheRepository;
     private VendorRepository vendorRepository;
-    private PurchaseOrderRepository purchaseOrderRepository;
-    private GoodsReceiptRepository goodsReceiptRepository;
-    private PaymentRecordRepository paymentRecordRepository;
+    private FreeGstinVerificationService freeGstinVerificationService;
     private ValidationService validationService;
 
     @BeforeEach
@@ -40,19 +35,15 @@ class ValidationServiceTests {
         documentRepository = mock(DocumentRepository.class);
         gstCacheRepository = mock(GstCacheRepository.class);
         vendorRepository = mock(VendorRepository.class);
-        purchaseOrderRepository = mock(PurchaseOrderRepository.class);
-        goodsReceiptRepository = mock(GoodsReceiptRepository.class);
-        paymentRecordRepository = mock(PaymentRecordRepository.class);
+        freeGstinVerificationService = mock(FreeGstinVerificationService.class);
         validationService = new ValidationService(
                 documentRepository,
                 gstCacheRepository,
                 vendorRepository,
-                purchaseOrderRepository,
-                goodsReceiptRepository,
-                paymentRecordRepository,
                 new QrPayloadService(),
-                new IrpSignatureService("")
+                freeGstinVerificationService
         );
+
     }
 
     @Test
@@ -79,11 +70,16 @@ class ValidationServiceTests {
 
         VerificationOutcome outcome = validationService.validate(data);
 
-        assertThat(outcome.score()).isEqualTo(70);
-        assertThat(outcome.classification()).isEqualTo(VerificationClassification.LOW_RISK);
+
+        assertThat(outcome.score()).isEqualTo(68); // 68: GST checks (50) + VENDOR_HISTORY checks (8)
+
+        assertThat(outcome.classification()).isEqualTo(VerificationClassification.REVIEW_REQUIRED);
+
+
         assertThat(outcome.checks())
                 .filteredOn(check -> "SIGNATURE_VALID".equals(check.getCode()))
                 .singleElement()
+
                 .extracting(check -> check.getStatus())
                 .isEqualTo(CheckStatus.NOT_PERFORMED);
     }
@@ -141,8 +137,7 @@ class ValidationServiceTests {
                 }
                 """;
         DocumentInspection inspection = new DocumentInspection(
-                true, true, payload, false, false, false,
-                2, false, false, false, false, List.of(), "abc123"
+                true, payload, "abc123"
         );
 
         VerificationOutcome outcome = validationService.validate(data, inspection);
@@ -158,22 +153,34 @@ class ValidationServiceTests {
     }
 
     @Test
-    void rejectsAnInvoiceAlreadyRecordedAsPaid() {
+    void doesNotVerifyMalformedGstinAgainstRegistry() {
         ExtractedData data = validInvoice();
-        when(paymentRecordRepository
-                .existsByVendorGstinIgnoreCaseAndInvoiceNumberIgnoreCase(
-                        data.getGstNumber(),
-                        data.getInvoiceNumber()
-                ))
-                .thenReturn(true);
+        data.setGstNumber("29INVALID");
 
         VerificationOutcome outcome = validationService.validate(data);
 
         assertThat(outcome.checks())
-                .filteredOn(check -> "NOT_ALREADY_PAID".equals(check.getCode()))
+                .filteredOn(check -> "GST_STATUS".equals(check.getCode()))
                 .singleElement()
                 .extracting(check -> check.getStatus())
-                .isEqualTo(CheckStatus.FAILED);
+                .isEqualTo(CheckStatus.NOT_PERFORMED);
+    }
+
+    @Test
+    void doesNotTrustExpiredGstCache() {
+        ExtractedData data = validInvoice();
+        GstCache expired = new GstCache(
+                data.getGstNumber(), "Acme Private Limited", "ACTIVE", LocalDateTime.now().minusDays(2)
+        );
+        when(gstCacheRepository.findById(data.getGstNumber())).thenReturn(Optional.of(expired));
+
+        VerificationOutcome outcome = validationService.validate(data);
+
+        assertThat(outcome.checks())
+                .filteredOn(check -> "GST_STATUS".equals(check.getCode()))
+                .singleElement()
+                .extracting(check -> check.getStatus())
+                .isEqualTo(CheckStatus.NOT_PERFORMED);
     }
 
     @Test
@@ -198,6 +205,35 @@ class ValidationServiceTests {
                 .singleElement()
                 .extracting(check -> check.getStatus())
                 .isEqualTo(CheckStatus.FAILED);
+    }
+
+    @Test
+    void marksValidFormatButFakeGstinAsFailedAfterLiveLookup() {
+        ExtractedData data = validInvoice();
+        data.setGstNumber("27ABCDE1234F1Z5");
+
+        when(gstCacheRepository.findById(data.getGstNumber())).thenReturn(Optional.empty());
+        when(freeGstinVerificationService.verifyAndCache(data.getGstNumber())).thenReturn(Optional.of(
+                new FreeGstinVerificationService.GstinVerifyResult(false, null, null, "ref-123")
+        ));
+
+        VerificationOutcome outcome = validationService.validate(data);
+
+        assertThat(outcome.checks())
+                .filteredOn(check -> "GST_STATUS".equals(check.getCode()))
+                .singleElement()
+                .satisfies(check -> {
+                    assertThat(check.getStatus()).isEqualTo(CheckStatus.FAILED);
+                    assertThat(check.getDetail()).contains("invalid or not found");
+                });
+
+        assertThat(outcome.checks())
+                .filteredOn(check -> "LEGAL_NAME_MATCH".equals(check.getCode()))
+                .singleElement()
+                .extracting(check -> check.getStatus())
+                .isEqualTo(CheckStatus.NOT_PERFORMED);
+
+        verify(freeGstinVerificationService).verifyAndCache(data.getGstNumber());
     }
 
     private ExtractedData validInvoice() {

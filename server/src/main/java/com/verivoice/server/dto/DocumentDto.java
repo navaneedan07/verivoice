@@ -32,5 +32,4 @@ public class DocumentDto {
     private Double riskScore;
     private Integer verificationScore;
     private VerificationClassification verificationStatus;
-    private Boolean fraudDetected;
 }

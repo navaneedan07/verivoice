@@ -40,10 +40,14 @@ public class VendorHistoryService {
         boolean gstVerified = outcome.checks().stream()
                 .anyMatch(check -> "GST_STATUS".equals(check.getCode())
                         && check.getStatus() == CheckStatus.PASSED);
+
         if (gstVerified) {
             vendor.setVerifiedAt(LocalDateTime.now());
         }
-        vendor.setStatus(outcome.score() >= 90 ? "TRUSTED" : "OBSERVED");
+        // Vendors should not become TRUSTED just because the invoice score is high.
+        // Since this TRUSTED decision is based on our internal DB history, keep it conservative.
+        vendor.setStatus("OBSERVED");
+
         vendorRepository.save(vendor);
     }
 }

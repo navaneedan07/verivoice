@@ -35,12 +35,12 @@ npm run build
 
 ## API Integration
 
-The frontend connects to the backend API at `http://localhost:8080/api`:
+The frontend connects to the backend API through the `/api` proxy:
 
-- `POST /api/documents` - Upload document
+- `POST /api/documents/upload` - Upload document
 - `GET /api/documents/{id}` - Get document details
+- `GET /api/dashboard/stats` - Live dashboard statistics
 - `GET /api/erp/purchase-orders` - List POs
-- `POST /api/erp/matching/validate` - 3-way matching
 - `GET /api/erp/goods-receipts` - List GRs
 
 ## Project Structure

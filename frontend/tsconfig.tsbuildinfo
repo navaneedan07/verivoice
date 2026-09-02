@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/dashboard.tsx","./src/components/documentupload.tsx","./src/components/header.tsx","./src/components/verificationresult.tsx","./src/pages/dashboardpage.tsx","./src/pages/uploadpage.tsx","./src/pages/vendorspage.tsx","./src/services/api.ts","./src/types/index.ts","./src/utils/helpers.ts"],"version":"5.9.3"}

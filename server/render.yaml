@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: verivoice-backend
+    env: java
+    plan: standard
+    buildCommand: mvn clean package -q -DskipTests
+    startCommand: java -Dserver.port=8080 -jar target/*.jar
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        value: ${DATABASE_URL}
+      - key: SPRING_DATASOURCE_USERNAME
+        value: ${DB_USER}
+      - key: SPRING_DATASOURCE_PASSWORD
+        value: ${DB_PASSWORD}
+      - key: SPRING_JPA_HIBERNATE_DDL_AUTO
+        value: validate
+      - key: SPRING_JPA_SHOW_SQL
+        value: "false"
+      - key: GROQ_API_KEY
+        value: ${GROQ_API_KEY}
+      - key: GROQ_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct
+      - key: SERVER_SERVLET_CONTEXT_PATH
+        value: /
+
+  - type: pserv
+    name: verivoice-postgres
+    plan: standard
+    ipAllowList: []
+    dbName: verivoice
+    user: verivoice
+    postgresMajorVersion: 15

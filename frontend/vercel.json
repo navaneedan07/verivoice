@@ -1,0 +1,55 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "env": {
+    "VITE_API_URL": "@verivoice_api_url"
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "${VITE_API_URL}/api/:path*"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/dashboard",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/upload",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/matching",
+      "destination": "/",
+      "permanent": false
+    },
+    {
+      "source": "/vendors",
+      "destination": "/",
+      "permanent": false
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/:path*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
+}

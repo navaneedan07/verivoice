@@ -3,7 +3,6 @@ import Header from './components/Header';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import VendorsPage from './pages/VendorsPage';
-import MatchingPage from './pages/MatchingPage';
 import './App.css';
 
 function App() {
@@ -16,7 +15,6 @@ function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/upload" element={<UploadPage />} />
             <Route path="/vendors" element={<VendorsPage />} />
-            <Route path="/matching" element={<MatchingPage />} />
           </Routes>
         </main>
       </div>

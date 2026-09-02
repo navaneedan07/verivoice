@@ -42,7 +42,7 @@ public class IrpSignatureService {
         if (parts.length != 3) {
             return new SignatureVerification(
                     SignatureVerification.Status.UNSUPPORTED,
-                    "Decoded QR payload is not a compact JWS with three sections."
+                    "Decoded QR payload is not a signed GST e-invoice JWS; only plain QR data was found."
             );
         }
         if (certificatePaths.isEmpty()) {

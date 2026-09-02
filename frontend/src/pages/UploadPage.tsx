@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import DocumentUpload from '../components/DocumentUpload';
 import VerificationResult from '../components/VerificationResult';
-import { DocumentDto } from '../types';
+import type { DocumentDto } from '../types';
 
 export default function UploadPage() {
   const [document, setDocument] = useState<DocumentDto | null>(null);

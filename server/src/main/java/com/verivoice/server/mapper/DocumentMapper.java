@@ -3,6 +3,8 @@ package com.verivoice.server.mapper;
 import com.verivoice.server.dto.DocumentDto;
 import com.verivoice.server.entity.Document;
 
+import java.util.List;
+
 public class DocumentMapper {
     public static DocumentDto mapToDocumentDto(Document doc) {
         if(doc == null) return null;
@@ -16,14 +18,18 @@ public class DocumentMapper {
         dto.setUploadDate(doc.getUploadDate());
         dto.setStatus(doc.getStatus());
         dto.setExtractedData(doc.getExtractedData());
-        dto.setAnomalies(doc.getAnomalies());
-        dto.setVerificationChecks(doc.getVerificationChecks());
+        dto.setAnomalies(doc.getAnomalies() == null ? List.of() : List.copyOf(doc.getAnomalies()));
+        dto.setVerificationChecks(doc.getVerificationChecks() == null
+            ? List.of()
+            : doc.getVerificationChecks().stream()
+            .filter(check -> !"ERP_MATCHING".equals(check.getLayer())
+                && !"FRAUD_ANALYSIS".equals(check.getLayer()))
+            .toList());
         dto.setRawLlmResponse(doc.getRawLlmResponse());
         dto.setExtractedText(doc.getExtractedText());
         dto.setRiskScore(doc.getRiskScore());
         dto.setVerificationScore(doc.getVerificationScore());
         dto.setVerificationStatus(doc.getVerificationStatus());
-        dto.setFraudDetected(doc.getFraudDetected());
 
         return dto;
     }
@@ -47,7 +53,6 @@ public class DocumentMapper {
         doc.setRiskScore(dto.getRiskScore());
         doc.setVerificationScore(dto.getVerificationScore());
         doc.setVerificationStatus(dto.getVerificationStatus());
-        doc.setFraudDetected(dto.getFraudDetected());
 
         return doc;
     }
