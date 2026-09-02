@@ -63,11 +63,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+
       - name: Deploy to Vercel
         run: |
-          npm install --global vercel
           cd frontend
-          vercel --prod --token="${{ secrets.VERCEL_TOKEN }}" --yes
+          vercel --prod \
+            --token="${{ secrets.VERCEL_TOKEN }}" \
+            --yes
 
   deploy-backend:
     runs-on: ubuntu-latest
