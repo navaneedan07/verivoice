@@ -4,8 +4,10 @@ services:
     env: java
     plan: standard
     buildCommand: mvn clean package -q -DskipTests
-    startCommand: java -Dserver.port=8080 -jar target/*.jar
+    startCommand: java -Dserver.port=${PORT} -Dspring.profiles.active=production -jar target/*.jar
     envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
       - key: SPRING_DATASOURCE_URL
         value: ${DATABASE_URL}
       - key: SPRING_DATASOURCE_USERNAME
@@ -13,7 +15,7 @@ services:
       - key: SPRING_DATASOURCE_PASSWORD
         value: ${DB_PASSWORD}
       - key: SPRING_JPA_HIBERNATE_DDL_AUTO
-        value: validate
+        value: update
       - key: SPRING_JPA_SHOW_SQL
         value: "false"
       - key: GROQ_API_KEY
