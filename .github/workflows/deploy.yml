@@ -12,20 +12,20 @@ jobs:
     name: Test Backend
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up JDK 24
         uses: actions/setup-java@v3
         with:
           java-version: '24'
           distribution: 'temurin'
           cache: maven
-      
+
       - name: Run backend tests
         run: cd server && mvn -q clean test
-      
+
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: backend-test-reports
           path: server/target/surefire-reports
@@ -35,22 +35,22 @@ jobs:
     name: Test Frontend
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Install dependencies
         run: cd frontend && npm ci
-      
+
       - name: Build frontend
         run: cd frontend && npm run build
-      
+
       - name: Upload dist
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist
@@ -62,7 +62,7 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Deploy to Vercel
         uses: vercel/action@main
         with:
@@ -79,16 +79,16 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Trigger Render deployment
         run: |
           curl --request POST \
             --url "https://api.render.com/deploy/srv-${{ secrets.RENDER_SERVICE_ID }}?key=${{ secrets.RENDER_API_KEY }}" \
             --header "accept: application/json"
-      
+
       - name: Wait for deployment
         run: sleep 30
-      
+
       - name: Health check
         run: |
           for i in {1..30}; do
