@@ -1,7 +1,9 @@
 import axios from 'axios';
 import type { DocumentDto, DashboardStats } from '../types';
 
-const configuredApiUrl = String(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const configuredApiUrl = String(
+  import.meta.env.VITE_API_URL || 'https://verivoice-lbwe.onrender.com/api',
+).replace(/\/+$/, '');
 const API_BASE_URL = configuredApiUrl.endsWith('/api')
   ? configuredApiUrl
   : `${configuredApiUrl}/api`;
