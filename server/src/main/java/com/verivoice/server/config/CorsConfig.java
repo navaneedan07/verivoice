@@ -3,7 +3,11 @@ package com.verivoice.server.config;
 import java.util.Arrays;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.CorsFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -33,6 +37,19 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedMethods(allowedMethods)
                 .allowedHeaders(allowedHeaders)
                 .maxAge(maxAge);
+    }
+
+    @Bean
+    public CorsFilter corsFilter() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(Arrays.asList(allowedOrigins));
+        configuration.setAllowedMethods(Arrays.asList(allowedMethods));
+        configuration.setAllowedHeaders(Arrays.asList(allowedHeaders));
+        configuration.setMaxAge(maxAge);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return new CorsFilter(source);
     }
 
     private static String[] split(String value) {
