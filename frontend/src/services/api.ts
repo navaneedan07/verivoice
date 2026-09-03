@@ -1,7 +1,10 @@
 import axios from 'axios';
 import type { DocumentDto, DashboardStats } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const configuredApiUrl = String(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const API_BASE_URL = configuredApiUrl.endsWith('/api')
+  ? configuredApiUrl
+  : `${configuredApiUrl}/api`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -39,7 +42,16 @@ export const dashboardService = {
       headers: { 'Cache-Control': 'no-cache' },
       params: { at: Date.now() },
     });
-    return response.data;
+    const stats = response.data ?? {};
+    return {
+      totalInvoices: Number(stats.totalInvoices) || 0,
+      verified: Number(stats.verified) || 0,
+      flagged: Number(stats.flagged) || 0,
+      pendingReview: Number(stats.pendingReview) || 0,
+      recentVerifications: Array.isArray(stats.recentVerifications)
+        ? stats.recentVerifications
+        : [],
+    };
   },
 };
 

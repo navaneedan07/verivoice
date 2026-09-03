@@ -115,11 +115,12 @@ function AnomalyItem({ anomaly }: { anomaly: string }) {
 // ─── Main component ───────────────────────────────────────
 export default function VerificationResult({ document }: VerificationResultProps) {
   const d = document; // short alias to avoid shadowing the global `document`
+  const verificationChecks = Array.isArray(d.verificationChecks) ? d.verificationChecks : [];
 
   const riskLevel = getRiskLevel(d.verificationScore);
   const statusBadge = getStatusBadge(d.status);
 
-  const groupedChecks = d.verificationChecks.reduce(
+  const groupedChecks = verificationChecks.reduce(
     (acc, check) => {
       if (!acc[check.layer]) acc[check.layer] = [];
       acc[check.layer].push(check);
@@ -128,13 +129,13 @@ export default function VerificationResult({ document }: VerificationResultProps
     {} as Record<string, VerificationCheck[]>,
   );
 
-  const totalPassed = d.verificationChecks.filter((c) => c.status === 'PASSED').length;
-  const totalFailed = d.verificationChecks.filter((c) => c.status === 'FAILED').length;
-  const totalSkipped = d.verificationChecks.filter((c) => c.status === 'NOT_PERFORMED').length;
+  const totalPassed = verificationChecks.filter((c) => c.status === 'PASSED').length;
+  const totalFailed = verificationChecks.filter((c) => c.status === 'FAILED').length;
+  const totalSkipped = verificationChecks.filter((c) => c.status === 'NOT_PERFORMED').length;
 
   const criticalCodes = ['GST_STATUS', 'SIGNATURE_VALID', 'PAYLOAD_MATCH'];
   const criticalChecks = criticalCodes
-    .map((code) => d.verificationChecks.find((c) => c.code === code))
+    .map((code) => verificationChecks.find((c) => c.code === code))
     .filter(Boolean) as VerificationCheck[];
 
   // ── Render ──────────────────────────────────────────────

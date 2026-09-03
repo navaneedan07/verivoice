@@ -102,8 +102,12 @@ jobs:
 
       - name: Health check
         run: |
+          backend_url="${{ secrets.RENDER_BACKEND_URL }}"
+          if [ -z "$backend_url" ]; then backend_url="https://verivoice-lbwe.onrender.com"; fi
+          backend_url="${backend_url%/}"
+
           for i in {1..30}; do
-            response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_BACKEND_URL }}/api/health" || echo "000")
+            response=$(curl --connect-timeout 10 --max-time 30 -sS -o /dev/null -w "%{http_code}" "$backend_url/api/health" || echo "000")
 
             if [ "$response" = "200" ]; then
               echo "Backend is healthy"
